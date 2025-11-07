@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UpdateAppointmentDto = void 0;
+class UpdateAppointmentDto {
+    clientName;
+    clientEmail;
+    clientNumber;
+    serviceId;
+    professionalId;
+    startAt;
+    endAt;
+    note;
+    totalCost;
+}
+exports.UpdateAppointmentDto = UpdateAppointmentDto;
+//# sourceMappingURL=update-appointment.dto.js.map
