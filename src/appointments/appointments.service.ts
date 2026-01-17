@@ -172,15 +172,22 @@ export class AppointmentsService {
   }
 
   async getCalendar(date: string): Promise<Appointment[]> {
-    const start = new Date(date + 'T00:00:00.000Z');
-    const end = new Date(date + 'T23:59:59.999Z');
-
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+  
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+  
     return this.appointmentRepo.find({
-      where: { startAt: Between(start, end), status: 'scheduled' },
+      where: {
+        startAt: Between(start, end),
+        status: 'scheduled',
+      },
       relations: ['service', 'professional'],
       order: { startAt: 'ASC' },
     });
   }
+  
   async remove(id: number): Promise<void> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
     if (!appointment) {
