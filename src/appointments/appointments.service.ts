@@ -172,21 +172,16 @@ export class AppointmentsService {
   }
 
   async getCalendar(date: string): Promise<Appointment[]> {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-  
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-  
-    return this.appointmentRepo.find({
-      where: {
-        startAt: Between(start, end),
-        status: 'scheduled',
-      },
-      relations: ['service', 'professional'],
-      order: { startAt: 'ASC' },
-    });
+    return this.appointmentRepo
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.service', 'service')
+      .leftJoinAndSelect('a.professional', 'professional')
+      .where(`DATE(a.startAt) = :date`, { date })
+      .andWhere('a.status = :status', { status: 'scheduled' })
+      .orderBy('a.startAt', 'ASC')
+      .getMany();
   }
+  
   
   async remove(id: number): Promise<void> {
     const appointment = await this.appointmentRepo.findOne({ where: { id } });
