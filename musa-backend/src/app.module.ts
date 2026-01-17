@@ -9,19 +9,36 @@ import { ConfigModule } from '@nestjs/config';
 import { CategoriesModule } from './categories/categories.module';
 import { AvailabilityRuleModule } from './availability-rule/availability-rule.module';
 import { AvailabilityExceptionModule } from './availability-exception/availability-exception.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
     TypeOrmModule.forRoot({
       type: 'postgres',
+
+      // ✅ PRODUCCIÓN (Railway, Render, etc)
+      url: process.env.DATABASE_URL,
+
+      // ✅ DESARROLLO LOCAL (fallback)
       host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT ?? '5432', 10),
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
       username: process.env.DB_USER,
       password: process.env.DB_PASS,
       database: process.env.DB_NAME,
+
       autoLoadEntities: true,
-      synchronize: true, // solo en desarrollo
+
+      // ⚠️ SOLO true en local
+      synchronize: process.env.NODE_ENV !== 'production',
+
+      // ✅ SSL obligatorio en la nube
+      ssl:
+        process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
     }),
+
     AppointmentsModule,
     ServicesModule,
     ProfessionalsModule,

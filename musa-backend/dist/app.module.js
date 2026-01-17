@@ -27,13 +27,17 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'postgres',
+                url: process.env.DATABASE_URL,
                 host: process.env.DB_HOST,
-                port: parseInt(process.env.DB_PORT ?? '5432', 10),
+                port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
                 username: process.env.DB_USER,
                 password: process.env.DB_PASS,
                 database: process.env.DB_NAME,
                 autoLoadEntities: true,
-                synchronize: true,
+                synchronize: process.env.NODE_ENV !== 'production',
+                ssl: process.env.NODE_ENV === 'production'
+                    ? { rejectUnauthorized: false }
+                    : false,
             }),
             appointments_module_1.AppointmentsModule,
             services_module_1.ServicesModule,
