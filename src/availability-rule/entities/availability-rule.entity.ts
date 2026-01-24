@@ -16,8 +16,9 @@ export class AvailabilityRule {
   @JoinColumn({ name: 'professional_id' })
   professional: Professional;
 
-  @Column({ name: 'day_of_week', type: 'int' }) // 0 = domingo .. 6 = sábado
-  dayOfWeek: number;
+@Column({ name: 'day_of_week', type: 'int' })
+dayOfWeek: number; // 0–6
+
 
   @Column({ name: 'start_time', type: 'time' })
   startTime: string; // "09:00:00"
