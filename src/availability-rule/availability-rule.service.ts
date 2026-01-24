@@ -140,30 +140,39 @@ export class AvailabilityRuleService {
       };
     });
   }
-  async create(dto: CreateAvailabilityRuleDto): Promise<AvailabilityRule> {
-    const professional = await this.professionalRepo.findOne({
-      where: { id: dto.professionalId },
-    });
-    if (!professional) throw new NotFoundException('Profesional no encontrado');
+async create(dto: CreateAvailabilityRuleDto): Promise<AvailabilityRule[]> {
+  const professional = await this.professionalRepo.findOne({
+    where: { id: dto.professionalId },
+  });
 
-    if (dto.dayOfWeek < 0 || dto.dayOfWeek > 6)
+  if (!professional) {
+    throw new NotFoundException('Profesional no encontrado');
+  }
+
+  const startTime = this.normalizeTime(dto.startTime);
+  const endTime = this.normalizeTime(dto.endTime);
+
+  if (startTime >= endTime) {
+    throw new BadRequestException('startTime debe ser menor que endTime');
+  }
+
+  const rules = dto.days.map((day) => {
+    if (day < 0 || day > 6) {
       throw new BadRequestException('dayOfWeek debe estar entre 0 y 6');
+    }
 
-    const startTime = this.normalizeTime(dto.startTime);
-    const endTime = this.normalizeTime(dto.endTime);
-    if (startTime >= endTime)
-      throw new BadRequestException('startTime debe ser menor que endTime');
-
-    const rule = this.ruleRepo.create({
+    return this.ruleRepo.create({
       professional,
-      dayOfWeek: dto.dayOfWeek,
+      dayOfWeek: day,
       startTime,
       endTime,
       active: dto.active ?? true,
     });
+  });
 
-    return this.ruleRepo.save(rule);
-  }
+  return this.ruleRepo.save(rules);
+}
+
 
   async findAll(): Promise<AvailabilityRule[]> {
     return this.ruleRepo.find({

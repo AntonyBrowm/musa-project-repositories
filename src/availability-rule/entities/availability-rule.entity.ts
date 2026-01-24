@@ -17,7 +17,7 @@ export class AvailabilityRule {
   professional: Professional;
 
 @Column({ name: 'day_of_week', type: 'int' })
-dayOfWeek: number; // 0–6
+dayOfWeek: number;
 
 
   @Column({ name: 'start_time', type: 'time' })

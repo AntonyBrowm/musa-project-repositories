@@ -6,16 +6,18 @@ import {
   Min,
   Max,
   Matches,
+  IsArray,
 } from 'class-validator';
 
 export class CreateAvailabilityRuleDto {
   @IsInt()
   professionalId: number;
 
+  @IsArray()
   @IsInt({ each: true })
   @Min(0, { each: true })
   @Max(6, { each: true })
-  dayOfWeek: number;
+  days: number[];
 
   @IsString()
   @Matches(/^\d{2}:\d{2}$/)
@@ -29,4 +31,3 @@ export class CreateAvailabilityRuleDto {
   @IsBoolean()
   active?: boolean;
 }
-
