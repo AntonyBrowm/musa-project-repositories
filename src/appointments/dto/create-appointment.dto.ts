@@ -1,44 +1,35 @@
 import {
-  IsString,
-  IsEmail,
-  IsOptional,
+  IsBoolean,
   IsInt,
-  IsDateString,
-  IsEnum,
-  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  Matches,
 } from 'class-validator';
 
-export class CreateAppointmentDto {
-  @IsString()
-  clientName: string;
-
-  @IsOptional()
-  @IsEmail()
-  clientEmail?: string;
-
-  @IsString()
-  clientNumber: string;
-
+export class CreateAvailabilityRuleDto {
   @IsInt()
-  serviceId: number;
+  professionalId: number;
 
-  @IsOptional()
-  @IsInt()
-  professionalId?: number;
+ @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  dayOfWeek: number[];
 
-  @IsDateString()
-  startAt: string; // ISO string (ej: 2025-09-25T14:00:00Z)
-
-  @IsDateString()
-  endAt: string;
-
-  @IsOptional()
   @IsString()
-  note?: string;
+  @Matches(/^\d{2}:\d{2}$/, {
+    message: 'startTime debe tener formato HH:mm',
+  })
+  startTime: string;
 
-  @IsNumber()
-  totalCost: number;
+  @IsString()
+  @Matches(/^\d{2}:\d{2}$/, {
+    message: 'endTime debe tener formato HH:mm',
+  })
+  endTime: string;
 
-  @IsEnum(['client', 'admin'])
-  createdBy: 'client' | 'admin';
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
