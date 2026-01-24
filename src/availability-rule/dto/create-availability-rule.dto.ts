@@ -15,7 +15,7 @@ export class CreateAvailabilityRuleDto {
   @IsInt({ each: true })
   @Min(0, { each: true })
   @Max(6, { each: true })
-  dayOfWeek: number[];
+  dayOfWeek: number;
 
   @IsString()
   @Matches(/^\d{2}:\d{2}$/)
