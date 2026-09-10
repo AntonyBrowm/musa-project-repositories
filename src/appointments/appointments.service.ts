@@ -12,6 +12,7 @@ import { Professional } from '../professionals/professionals.entity';
 import { AvailabilityRule } from 'src/availability-rule/entities/availability-rule.entity';
 import { AvailabilityException } from 'src/availability-exception/entities/availability-exception.entity';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { createEvents, EventAttributes } from 'ics';
 
 @Injectable()
 export class AppointmentsService {
@@ -224,4 +225,48 @@ export class AppointmentsService {
 
     return updated;
   }
+  
+  async getIcsFeed(professionalId: number): Promise<string> {
+  const appointments = await this.appointmentRepo.find({
+    where: {
+      professionalId,
+      status: 'scheduled',
+    },
+    relations: ['service', 'professional'],
+    order: { startAt: 'ASC' },
+  });
+
+  const events: EventAttributes[] = appointments.map((app) => {
+    const start = new Date(app.startAt);
+    const end = new Date(app.endAt);
+
+    return {
+      start: [
+        start.getUTCFullYear(),
+        start.getUTCMonth() + 1,
+        start.getUTCDate(),
+        start.getUTCHours(),
+        start.getUTCMinutes(),
+      ],
+      end: [
+        end.getUTCFullYear(),
+        end.getUTCMonth() + 1,
+        end.getUTCDate(),
+        end.getUTCHours(),
+        end.getUTCMinutes(),
+      ],
+      title: `Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
+      description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin nota'}`,
+      location: 'Salón Musa',
+      status: 'CONFIRMED',
+    };
+  });
+
+  return new Promise((resolve, reject) => {
+    createEvents(events, (error, value) => {
+      if (error) return reject(error);
+      resolve(value);
+    });
+  });
+}
 }

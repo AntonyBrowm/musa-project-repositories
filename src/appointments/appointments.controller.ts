@@ -8,7 +8,10 @@ import {
   Query,
   Delete,
   Put,
+  Res,     
+  Header, 
 } from '@nestjs/common';
+import express from 'express';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Appointment } from './appointments.entity';
@@ -50,5 +53,16 @@ export class AppointmentsController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.appointmentsService.remove(id);
     return { success: true };
+  }
+
+  @Get('feed/:professionalId.ics')
+  @Header('Content-Type', 'text/calendar; charset=utf-8')
+  @Header('Content-Disposition', 'inline; filename="agenda-musa.ics"')
+  async getFeed(
+    @Param('professionalId', ParseIntPipe) professionalId: number,
+    @Res() res: express.Response,
+  ) {
+    const icsData = await this.appointmentsService.getIcsFeed(professionalId);
+    return res.send(icsData);
   }
 }
