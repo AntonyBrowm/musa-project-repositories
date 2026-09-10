@@ -30,7 +30,7 @@ import { AvailabilityExceptionModule } from './availability-exception/availabili
       autoLoadEntities: true,
 
       // ⚠️ SOLO true en local
-      synchronize: process.env.NODE_ENV !== 'production',
+      synchronize: true,
 
       // ✅ SSL obligatorio en la nube
       ssl:

@@ -10,6 +10,7 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://localhost:5173',
       'https://tu-frontend.vercel.app',
+      '0.0.0.0',
     ],
     credentials: true,
   });
@@ -21,6 +22,6 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT || 4000);
+  await app.listen(process.env.PORT || 4000, '0.0.0.0');
 }
 bootstrap();
