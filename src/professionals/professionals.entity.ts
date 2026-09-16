@@ -17,6 +17,9 @@ export class Professional {
 
   @Column({ type: 'varchar', length: 20 })
   number: string;
+  
+  @Column({ type: 'varchar', length: 100 })
+  email: string;
 
   @Column({ nullable: true })
   color?: string;

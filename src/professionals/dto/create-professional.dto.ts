@@ -5,7 +5,6 @@ import {
   IsArray,
   ArrayUnique,
   IsInt,
-  IsNumber,
 } from 'class-validator';
 
 export class CreateProfessionalDto {
@@ -14,6 +13,9 @@ export class CreateProfessionalDto {
 
   @IsString()
   number: string;
+
+  @IsString()
+  email: string;
 
   @IsArray()
   @ArrayUnique()

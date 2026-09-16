@@ -27,6 +27,7 @@ export class ProfessionalsService {
     const {
       name,
       number,
+      email,
       color,
       active = true,
       categories: categoryIds = [],
@@ -57,6 +58,7 @@ export class ProfessionalsService {
       const newProf = profRepo.create({
         name: name.trim(),
         number,
+        email,
         color,
         active,
       });
@@ -84,14 +86,13 @@ export class ProfessionalsService {
   }
 
   async findAll() {
-    // 1. Traer profesionales activos
+
     const professionals = await this.professionalRepo.find({
       where: { active: true },
     });
     const ids = professionals.map((p) => p.id);
     if (ids.length === 0) return [];
 
-    // 2. Traer categorías por profesional (via join table)
     const rawCategories = await this.dataSource
       .createQueryBuilder()
       .select('pc.professional_id', 'professional_id')
@@ -113,12 +114,12 @@ export class ProfessionalsService {
         id: row.id,
         name: row.name,
         number: row.number,
+        email: row.email,
         description: row.description,
         active: row.active,
       });
     });
 
-    // 3. Traer availability_rules por profesional
     const rules = await this.availabilityRepo.find({
       where: {
         professional: { id: In(ids) },
@@ -155,6 +156,7 @@ export class ProfessionalsService {
       id: p.id,
       name: p.name,
       number: p.number,
+      email: p.email,
       color: p.color,
       active: p.active,
       categories: categoriesByProfessional[p.id] || [],
@@ -172,6 +174,7 @@ export class ProfessionalsService {
     const {
       name,
       number,
+      email,
       color,
       active,
       categories: newCategoryIds,
@@ -194,6 +197,7 @@ export class ProfessionalsService {
       if (name !== undefined) partial.name = String(name).trim();
       if (color !== undefined) partial.color = color;
       if (number !== undefined) partial.number = number;
+      if (email !== undefined) partial.email = email;
       if (active !== undefined) partial.active = active;
 
       if (Object.keys(partial).length > 0) {
