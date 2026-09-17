@@ -246,49 +246,52 @@ async create(dto: CreateAppointmentDto): Promise<Appointment> {
 
     return updated;
   }
-  private generateSingleIcs(app: Appointment): Promise<string> {
-    const start = new Date(app.startAt);
-    const end = new Date(app.endAt);
+private generateSingleIcs(app: Appointment): Promise<string> {
+  const start = new Date(app.startAt);
+  const end = new Date(app.endAt);
 
-    const event: EventAttributes = {
-      start: [
-        start.getUTCFullYear(),
-        start.getUTCMonth() + 1,
-        start.getUTCDate(),
-        start.getUTCHours(),
-        start.getUTCMinutes(),
-      ],
-      end: [
-        end.getUTCFullYear(),
-        end.getUTCMonth() + 1,
-        end.getUTCDate(),
-        end.getUTCHours(),
-        end.getUTCMinutes(),
-      ],
-      title: `Nueva Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
-      description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin notas'}`,
-      location: 'Salón Musa',
-      status: 'CONFIRMED',
-      method: 'REQUEST', // INDISPENSABLE para que Google/Apple lean el correo como invitación activa
-      organizer: { name: 'Musa App', email: process.env.SMTP_USER || 'no-reply@musa.com' },
-      attendees: [
-        {
-          name: app.professional.name || 'Profesional',
-          email: app.professional.email,
-          rsvp: true,
-          partstat: 'NEEDS-ACTION',
-          role: 'REQ-PARTICIPANT',
-        },
-      ],
-    };
+  // Usamos el correo verificado en AWS SES
+  const organizerEmail = process.env.SMTP_FROM_EMAIL || 'antonybrowm@gmail.com';
 
-    return new Promise((resolve, reject) => {
-      createEvent(event, (error, value) => {
-        if (error) return reject(error);
-        resolve(value);
-      });
+  const event: EventAttributes = {
+    start: [
+      start.getUTCFullYear(),
+      start.getUTCMonth() + 1,
+      start.getUTCDate(),
+      start.getUTCHours(),
+      start.getUTCMinutes(),
+    ],
+    end: [
+      end.getUTCFullYear(),
+      end.getUTCMonth() + 1,
+      end.getUTCDate(),
+      end.getUTCHours(),
+      end.getUTCMinutes(),
+    ],
+    title: `Nueva Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
+    description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin notas'}`,
+    location: 'Salón Musa',
+    status: 'CONFIRMED',
+    method: 'REQUEST',
+    organizer: { name: 'Musa App', email: organizerEmail }, // <-- Corregido aquí
+    attendees: [
+      {
+        name: app.professional?.name || 'Profesional',
+        email: app.professional.email,
+        rsvp: true,
+        partstat: 'NEEDS-ACTION',
+        role: 'REQ-PARTICIPANT',
+      },
+    ],
+  };
+
+  return new Promise((resolve, reject) => {
+    createEvent(event, (error, value) => {
+      if (error) return reject(error);
+      resolve(value);
     });
-  }
+  });
+}
   private async sendCalendarInvitation(app: Appointment): Promise<void> {
     const icsContent = await this.generateSingleIcs(app);
 
