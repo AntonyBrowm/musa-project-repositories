@@ -251,7 +251,7 @@ private generateSingleIcs(app: Appointment): Promise<string> {
   const end = new Date(app.endAt);
 
   // Usamos el correo verificado en AWS SES
-  const organizerEmail = process.env.SMTP_FROM_EMAIL || 'antonybrowm@gmail.com';
+  const organizerEmail = 'antonybrowm@gmail.com';
 
   const event: EventAttributes = {
     start: [
