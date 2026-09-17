@@ -12,7 +12,8 @@ import { Professional } from '../professionals/professionals.entity';
 import { AvailabilityRule } from 'src/availability-rule/entities/availability-rule.entity';
 import { AvailabilityException } from 'src/availability-exception/entities/availability-exception.entity';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { createEvents, EventAttributes } from 'ics';
+import { createEvents } from 'ics';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class AppointmentsService {
@@ -27,7 +28,17 @@ export class AppointmentsService {
     private readonly ruleRepo: Repository<AvailabilityRule>,
     @InjectRepository(AvailabilityException)
     private readonly exceptionRepo: Repository<AvailabilityException>,
-  ) {}
+  ) {
+this.transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: Number(process.env.SMTP_PORT) === 465, // Auto-detecta si es 465 o 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+  }
 
   // función central: valida reglas, excepciones y overlaps
   private async isSlotAvailable(
@@ -107,39 +118,34 @@ export class AppointmentsService {
     return { ok: true };
   }
 
-  async create(dto: CreateAppointmentDto): Promise<Appointment> {
-    // 1. Validar servicio
+async create(dto: CreateAppointmentDto): Promise<Appointment> {
     const service = await this.serviceRepo.findOne({
       where: { id: dto.serviceId },
     });
-    if (!service) throw new Error('Servicio no encontrado');
+    if (!service) throw new BadRequestException('Servicio no encontrado');
 
-    // 2. Validar profesional (si aplica)
     let professional: Professional | undefined;
     if (dto.professionalId) {
       const found = await this.professionalRepo.findOne({
         where: { id: dto.professionalId },
       });
-      if (!found) throw new Error('Profesional no encontrado');
+      if (!found) throw new BadRequestException('Profesional no encontrado');
       professional = found;
     } else {
-      throw new Error('Debe especificar profesional'); // o lógica para asignar automáticamente
+      throw new BadRequestException('Debe especificar profesional');
     }
 
-    // 3. Calcular start y end (usar UTC parsing)
     const startAt = new Date(dto.startAt);
     const endAt = new Date(startAt.getTime() + service.durationMin * 60000);
 
-    // 4. Validar disponibilidad combinada
     const availability = await this.isSlotAvailable(
       professional.id,
       startAt,
       endAt,
     );
     if (!availability.ok)
-      throw new Error(availability.reason || 'Horario no disponible');
+      throw new BadRequestException(availability.reason || 'Horario no disponible');
 
-    // 5. Crear cita
     const appointment = this.appointmentRepo.create({
       clientName: dto.clientName,
       clientEmail: dto.clientEmail,
@@ -153,7 +159,19 @@ export class AppointmentsService {
       createdBy: dto.createdBy,
     });
 
-    return this.appointmentRepo.save(appointment);
+    const savedAppointment = await this.appointmentRepo.save(appointment);
+
+    // Cargar relaciones completas para construir el correo
+    const fullAppointment = await this.findOne(savedAppointment.id);
+
+    // Si el profesional tiene correo asignado, enviamos la invitación por email
+    if (fullAppointment.professional?.email) {
+      this.sendCalendarInvitation(fullAppointment).catch((err) =>
+        this.logger.error(`Error al enviar invitación por correo: ${err.message}`),
+      );
+    }
+
+    return savedAppointment;
   }
 
   async findAll(): Promise<Appointment[]> {
@@ -225,7 +243,67 @@ export class AppointmentsService {
 
     return updated;
   }
-  
+  private generateSingleIcs(app: Appointment): Promise<string> {
+    const start = new Date(app.startAt);
+    const end = new Date(app.endAt);
+
+    const event: EventAttributes = {
+      start: [
+        start.getUTCFullYear(),
+        start.getUTCMonth() + 1,
+        start.getUTCDate(),
+        start.getUTCHours(),
+        start.getUTCMinutes(),
+      ],
+      end: [
+        end.getUTCFullYear(),
+        end.getUTCMonth() + 1,
+        end.getUTCDate(),
+        end.getUTCHours(),
+        end.getUTCMinutes(),
+      ],
+      title: `Nueva Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
+      description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin notas'}`,
+      location: 'Salón Musa',
+      status: 'CONFIRMED',
+      method: 'REQUEST', // INDISPENSABLE para que Google/Apple lean el correo como invitación activa
+      organizer: { name: 'Musa App', email: process.env.SMTP_USER || 'no-reply@musa.com' },
+      attendees: [
+        {
+          name: app.professional.name || 'Profesional',
+          email: app.professional.email,
+          rsvp: true,
+          partstat: 'NEEDS-ACTION',
+          role: 'REQ-PARTICIPANT',
+        },
+      ],
+    };
+
+    return new Promise((resolve, reject) => {
+      createEvent(event, (error, value) => {
+        if (error) return reject(error);
+        resolve(value);
+      });
+    });
+  }
+  private async sendCalendarInvitation(app: Appointment): Promise<void> {
+    const icsContent = await this.generateSingleIcs(app);
+
+    const mailOptions = {
+      from: `"Musa App" <${process.env.SMTP_USER || 'no-reply@musa.com'}>`,
+      to: app.professional.email,
+      subject: `Nueva cita reservada: ${app.clientName} - ${app.service?.name}`,
+      text: `Hola ${app.professional.name || ''},\n\nSe ha agendado una nueva cita con ${app.clientName}.\nFecha: ${app.startAt.toISOString()}\nServicio: ${app.service?.name}\nTeléfono del cliente: ${app.clientNumber}\n\nSe adjunta la invitación para agendarlo a tu calendario.`,
+      icalEvent: {
+        filename: 'cita-invitacion.ics',
+        method: 'REQUEST',
+        content: icsContent,
+      },
+    };
+
+    await this.transporter.sendMail(mailOptions);
+    this.logger.log(`Invitación enviada exitosamente a ${app.professional.email}`);
+  }
   async getIcsFeed(professionalId: number): Promise<string> {
   const appointments = await this.appointmentRepo.find({
     where: {
