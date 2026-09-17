@@ -250,30 +250,32 @@ private generateSingleIcs(app: Appointment): Promise<string> {
   const start = new Date(app.startAt);
   const end = new Date(app.endAt);
 
-  // Usamos el correo verificado en AWS SES
-  const organizerEmail = 'antonybrowm@gmail.com';
+  // Remitente verificado en AWS
+  const organizerEmail = process.env.SMTP_FROM || 'antonybrowm@gmail.com';
 
   const event: EventAttributes = {
+    uid: `appointment-${app.id}@musa.com`, // UID único para que Google Calendar lo identifique
     start: [
-      start.getUTCFullYear(),
-      start.getUTCMonth() + 1,
-      start.getUTCDate(),
-      start.getUTCHours(),
-      start.getUTCMinutes(),
+      start.getFullYear(),  // Año local
+      start.getMonth() + 1, // Mes local (1-12)
+      start.getDate(),      // Día local
+      start.getHours(),     // Hora local (ej: 17 para las 5 PM)
+      start.getMinutes(),   // Minutos local
     ],
     end: [
-      end.getUTCFullYear(),
-      end.getUTCMonth() + 1,
-      end.getUTCDate(),
-      end.getUTCHours(),
-      end.getUTCMinutes(),
+      end.getFullYear(),
+      end.getMonth() + 1,
+      end.getDate(),
+      end.getHours(),
+      end.getMinutes(),
     ],
     title: `Nueva Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
     description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin notas'}`,
     location: 'Salón Musa',
     status: 'CONFIRMED',
     method: 'REQUEST',
-    organizer: { name: 'Musa App', email: organizerEmail }, // <-- Corregido aquí
+    startOutputType: 'local', // <-- CLAVE: evita que le reste horas en el calendario
+    organizer: { name: 'Musa App', email: organizerEmail },
     attendees: [
       {
         name: app.professional?.name || 'Profesional',
