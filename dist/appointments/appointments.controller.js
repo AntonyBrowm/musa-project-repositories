@@ -11,9 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppointmentsController = void 0;
 const common_1 = require("@nestjs/common");
+const express_1 = __importDefault(require("express"));
 const appointments_service_1 = require("./appointments.service");
 const create_appointment_dto_1 = require("./dto/create-appointment.dto");
 const update_appointment_dto_1 = require("./dto/update-appointment.dto");
@@ -40,6 +44,10 @@ let AppointmentsController = class AppointmentsController {
     async remove(id) {
         await this.appointmentsService.remove(id);
         return { success: true };
+    }
+    async getFeed(professionalId, res) {
+        const icsData = await this.appointmentsService.getIcsFeed(professionalId);
+        return res.send(icsData);
     }
 };
 exports.AppointmentsController = AppointmentsController;
@@ -85,6 +93,16 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], AppointmentsController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Get)('feed/:professionalId.ics'),
+    (0, common_1.Header)('Content-Type', 'text/calendar; charset=utf-8'),
+    (0, common_1.Header)('Content-Disposition', 'inline; filename="agenda-musa.ics"'),
+    __param(0, (0, common_1.Param)('professionalId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], AppointmentsController.prototype, "getFeed", null);
 exports.AppointmentsController = AppointmentsController = __decorate([
     (0, common_1.Controller)('appointments'),
     __metadata("design:paramtypes", [appointments_service_1.AppointmentsService])

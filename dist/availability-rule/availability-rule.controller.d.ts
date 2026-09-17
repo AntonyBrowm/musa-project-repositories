@@ -5,7 +5,7 @@ import { BulkAvailabilityDto } from './dto/bulk-availability.dto';
 export declare class AvailabilityRuleController {
     private readonly availabilityRuleService;
     constructor(availabilityRuleService: AvailabilityRuleService);
-    create(createAvailabilityRuleDto: CreateAvailabilityRuleDto): Promise<import("./entities/availability-rule.entity").AvailabilityRule>;
+    create(createAvailabilityRuleDto: CreateAvailabilityRuleDto): Promise<import("./entities/availability-rule.entity").AvailabilityRule[]>;
     bulk(dto: BulkAvailabilityDto): Promise<{
         success: boolean;
         created: {

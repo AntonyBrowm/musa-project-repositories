@@ -12,6 +12,8 @@ export declare class AppointmentsService {
     private readonly professionalRepo;
     private readonly ruleRepo;
     private readonly exceptionRepo;
+    private readonly logger;
+    private transporter;
     constructor(appointmentRepo: Repository<Appointment>, serviceRepo: Repository<Service>, professionalRepo: Repository<Professional>, ruleRepo: Repository<AvailabilityRule>, exceptionRepo: Repository<AvailabilityException>);
     private isSlotAvailable;
     create(dto: CreateAppointmentDto): Promise<Appointment>;
@@ -20,4 +22,7 @@ export declare class AppointmentsService {
     getCalendar(date: string): Promise<Appointment[]>;
     remove(id: number): Promise<void>;
     update(id: number, dto: UpdateAppointmentDto): Promise<Appointment>;
+    private generateSingleIcs;
+    private sendCalendarInvitation;
+    getIcsFeed(professionalId: number): Promise<string>;
 }

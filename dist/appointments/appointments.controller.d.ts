@@ -1,3 +1,4 @@
+import express from 'express';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Appointment } from './appointments.entity';
@@ -13,4 +14,5 @@ export declare class AppointmentsController {
     remove(id: number): Promise<{
         success: boolean;
     }>;
+    getFeed(professionalId: number, res: express.Response): Promise<express.Response<any, Record<string, any>>>;
 }

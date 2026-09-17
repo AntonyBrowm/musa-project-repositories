@@ -120,22 +120,27 @@ let AvailabilityRuleService = class AvailabilityRuleService {
         const professional = await this.professionalRepo.findOne({
             where: { id: dto.professionalId },
         });
-        if (!professional)
+        if (!professional) {
             throw new common_1.NotFoundException('Profesional no encontrado');
-        if (dto.dayOfWeek < 0 || dto.dayOfWeek > 6)
-            throw new common_1.BadRequestException('dayOfWeek debe estar entre 0 y 6');
+        }
         const startTime = this.normalizeTime(dto.startTime);
         const endTime = this.normalizeTime(dto.endTime);
-        if (startTime >= endTime)
+        if (startTime >= endTime) {
             throw new common_1.BadRequestException('startTime debe ser menor que endTime');
-        const rule = this.ruleRepo.create({
-            professional,
-            dayOfWeek: dto.dayOfWeek,
-            startTime,
-            endTime,
-            active: dto.active ?? true,
+        }
+        const rules = dto.days.map((day) => {
+            if (day < 0 || day > 6) {
+                throw new common_1.BadRequestException('dayOfWeek debe estar entre 0 y 6');
+            }
+            return this.ruleRepo.create({
+                professional,
+                dayOfWeek: day,
+                startTime,
+                endTime,
+                active: dto.active ?? true,
+            });
         });
-        return this.ruleRepo.save(rule);
+        return this.ruleRepo.save(rules);
     }
     async findAll() {
         return this.ruleRepo.find({

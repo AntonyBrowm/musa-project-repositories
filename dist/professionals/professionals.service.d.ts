@@ -15,6 +15,7 @@ export declare class ProfessionalsService {
         id: number;
         name: string;
         number: string;
+        email: string;
         color: string | undefined;
         active: boolean;
         categories: any[];

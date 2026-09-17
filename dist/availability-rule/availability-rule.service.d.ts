@@ -25,7 +25,7 @@ export declare class AvailabilityRuleService {
             dayOfWeek: number;
         }[];
     }>;
-    create(dto: CreateAvailabilityRuleDto): Promise<AvailabilityRule>;
+    create(dto: CreateAvailabilityRuleDto): Promise<AvailabilityRule[]>;
     findAll(): Promise<AvailabilityRule[]>;
     findOne(id: number): Promise<AvailabilityRule>;
     findByProfessional(professionalId: number): Promise<AvailabilityRule[]>;

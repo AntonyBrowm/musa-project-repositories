@@ -1,5 +1,8 @@
-import { CreateAvailabilityRuleDto } from './create-availability-rule.dto';
-declare const UpdateAvailabilityRuleDto_base: import("@nestjs/mapped-types").MappedType<Partial<CreateAvailabilityRuleDto>>;
-export declare class UpdateAvailabilityRuleDto extends UpdateAvailabilityRuleDto_base {
+export declare class UpdateAvailabilityRuleDto {
+    professionalId: number;
+    days: number[];
+    startTime: string;
+    endTime: string;
+    active?: boolean;
+    dayOfWeek: undefined;
 }
-export {};

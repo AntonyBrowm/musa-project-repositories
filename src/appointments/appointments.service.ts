@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,11 +13,13 @@ import { Professional } from '../professionals/professionals.entity';
 import { AvailabilityRule } from 'src/availability-rule/entities/availability-rule.entity';
 import { AvailabilityException } from 'src/availability-exception/entities/availability-exception.entity';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { createEvents } from 'ics';
+import { createEvents, createEvent, EventAttributes } from 'ics';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class AppointmentsService {
+  private readonly logger = new Logger(AppointmentsService.name);
+  private transporter: nodemailer.Transporter;
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,

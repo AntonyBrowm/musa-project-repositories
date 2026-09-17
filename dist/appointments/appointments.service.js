@@ -1,16 +1,50 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AppointmentsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppointmentsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -21,18 +55,31 @@ const services_entity_1 = require("../services/services.entity");
 const professionals_entity_1 = require("../professionals/professionals.entity");
 const availability_rule_entity_1 = require("../availability-rule/entities/availability-rule.entity");
 const availability_exception_entity_1 = require("../availability-exception/entities/availability-exception.entity");
-let AppointmentsService = class AppointmentsService {
+const ics_1 = require("ics");
+const nodemailer = __importStar(require("nodemailer"));
+let AppointmentsService = AppointmentsService_1 = class AppointmentsService {
     appointmentRepo;
     serviceRepo;
     professionalRepo;
     ruleRepo;
     exceptionRepo;
+    logger = new common_1.Logger(AppointmentsService_1.name);
+    transporter;
     constructor(appointmentRepo, serviceRepo, professionalRepo, ruleRepo, exceptionRepo) {
         this.appointmentRepo = appointmentRepo;
         this.serviceRepo = serviceRepo;
         this.professionalRepo = professionalRepo;
         this.ruleRepo = ruleRepo;
         this.exceptionRepo = exceptionRepo;
+        this.transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT),
+            secure: Number(process.env.SMTP_PORT) === 465,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
     }
     async isSlotAvailable(professionalId, startAt, endAt, excludingAppointmentId) {
         const dayOfWeek = startAt.getUTCDay();
@@ -91,24 +138,24 @@ let AppointmentsService = class AppointmentsService {
             where: { id: dto.serviceId },
         });
         if (!service)
-            throw new Error('Servicio no encontrado');
+            throw new common_1.BadRequestException('Servicio no encontrado');
         let professional;
         if (dto.professionalId) {
             const found = await this.professionalRepo.findOne({
                 where: { id: dto.professionalId },
             });
             if (!found)
-                throw new Error('Profesional no encontrado');
+                throw new common_1.BadRequestException('Profesional no encontrado');
             professional = found;
         }
         else {
-            throw new Error('Debe especificar profesional');
+            throw new common_1.BadRequestException('Debe especificar profesional');
         }
         const startAt = new Date(dto.startAt);
         const endAt = new Date(startAt.getTime() + service.durationMin * 60000);
         const availability = await this.isSlotAvailable(professional.id, startAt, endAt);
         if (!availability.ok)
-            throw new Error(availability.reason || 'Horario no disponible');
+            throw new common_1.BadRequestException(availability.reason || 'Horario no disponible');
         const appointment = this.appointmentRepo.create({
             clientName: dto.clientName,
             clientEmail: dto.clientEmail,
@@ -121,7 +168,12 @@ let AppointmentsService = class AppointmentsService {
             totalCost: dto.totalCost,
             createdBy: dto.createdBy,
         });
-        return this.appointmentRepo.save(appointment);
+        const savedAppointment = await this.appointmentRepo.save(appointment);
+        const fullAppointment = await this.findOne(savedAppointment.id);
+        if (fullAppointment.professional?.email) {
+            this.sendCalendarInvitation(fullAppointment).catch((err) => this.logger.error(`Error al enviar invitación por correo: ${err.message}`));
+        }
+        return savedAppointment;
     }
     async findAll() {
         return this.appointmentRepo.find({
@@ -173,9 +225,108 @@ let AppointmentsService = class AppointmentsService {
             throw new common_1.NotFoundException(`Appointment with id ${id} not found after update`);
         return updated;
     }
+    generateSingleIcs(app) {
+        const start = new Date(app.startAt);
+        const end = new Date(app.endAt);
+        const event = {
+            start: [
+                start.getUTCFullYear(),
+                start.getUTCMonth() + 1,
+                start.getUTCDate(),
+                start.getUTCHours(),
+                start.getUTCMinutes(),
+            ],
+            end: [
+                end.getUTCFullYear(),
+                end.getUTCMonth() + 1,
+                end.getUTCDate(),
+                end.getUTCHours(),
+                end.getUTCMinutes(),
+            ],
+            title: `Nueva Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
+            description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin notas'}`,
+            location: 'Salón Musa',
+            status: 'CONFIRMED',
+            method: 'REQUEST',
+            organizer: { name: 'Musa App', email: process.env.SMTP_USER || 'no-reply@musa.com' },
+            attendees: [
+                {
+                    name: app.professional.name || 'Profesional',
+                    email: app.professional.email,
+                    rsvp: true,
+                    partstat: 'NEEDS-ACTION',
+                    role: 'REQ-PARTICIPANT',
+                },
+            ],
+        };
+        return new Promise((resolve, reject) => {
+            (0, ics_1.createEvent)(event, (error, value) => {
+                if (error)
+                    return reject(error);
+                resolve(value);
+            });
+        });
+    }
+    async sendCalendarInvitation(app) {
+        const icsContent = await this.generateSingleIcs(app);
+        const mailOptions = {
+            from: `"Musa App" <${process.env.SMTP_USER || 'no-reply@musa.com'}>`,
+            to: app.professional.email,
+            subject: `Nueva cita reservada: ${app.clientName} - ${app.service?.name}`,
+            text: `Hola ${app.professional.name || ''},\n\nSe ha agendado una nueva cita con ${app.clientName}.\nFecha: ${app.startAt.toISOString()}\nServicio: ${app.service?.name}\nTeléfono del cliente: ${app.clientNumber}\n\nSe adjunta la invitación para agendarlo a tu calendario.`,
+            icalEvent: {
+                filename: 'cita-invitacion.ics',
+                method: 'REQUEST',
+                content: icsContent,
+            },
+        };
+        await this.transporter.sendMail(mailOptions);
+        this.logger.log(`Invitación enviada exitosamente a ${app.professional.email}`);
+    }
+    async getIcsFeed(professionalId) {
+        const appointments = await this.appointmentRepo.find({
+            where: {
+                professionalId,
+                status: 'scheduled',
+            },
+            relations: ['service', 'professional'],
+            order: { startAt: 'ASC' },
+        });
+        const events = appointments.map((app) => {
+            const start = new Date(app.startAt);
+            const end = new Date(app.endAt);
+            return {
+                start: [
+                    start.getUTCFullYear(),
+                    start.getUTCMonth() + 1,
+                    start.getUTCDate(),
+                    start.getUTCHours(),
+                    start.getUTCMinutes(),
+                ],
+                end: [
+                    end.getUTCFullYear(),
+                    end.getUTCMonth() + 1,
+                    end.getUTCDate(),
+                    end.getUTCHours(),
+                    end.getUTCMinutes(),
+                ],
+                title: `Cita: ${app.clientName} - ${app.service?.name || 'Servicio'}`,
+                description: `Cliente: ${app.clientName}\nTeléfono: ${app.clientNumber}\nNota: ${app.note || 'Sin nota'}`,
+                location: 'Salón Musa',
+                status: 'CONFIRMED',
+            };
+        });
+        return new Promise((resolve, reject) => {
+            (0, ics_1.createEvents)(events, (error, value) => {
+                if (error)
+                    return reject(error);
+                resolve(value);
+            });
+        });
+    }
 };
 exports.AppointmentsService = AppointmentsService;
-exports.AppointmentsService = AppointmentsService = __decorate([
+exports.AppointmentsService = AppointmentsService = AppointmentsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(appointments_entity_1.Appointment)),
     __param(1, (0, typeorm_1.InjectRepository)(services_entity_1.Service)),

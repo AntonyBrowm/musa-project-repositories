@@ -16,6 +16,7 @@ let Professional = class Professional {
     id;
     name;
     number;
+    email;
     color;
     active;
     categories;
@@ -33,6 +34,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 20 }),
     __metadata("design:type", String)
 ], Professional.prototype, "number", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100 }),
+    __metadata("design:type", String)
+], Professional.prototype, "email", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

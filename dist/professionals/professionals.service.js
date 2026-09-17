@@ -31,7 +31,7 @@ let ProfessionalsService = class ProfessionalsService {
         this.dataSource = dataSource;
     }
     async create(dto) {
-        const { name, number, color, active = true, categories: categoryIds = [], } = dto;
+        const { name, number, email, color, active = true, categories: categoryIds = [], } = dto;
         if (!name?.trim())
             throw new common_1.BadRequestException('name es requerido');
         if (!Array.isArray(categoryIds)) {
@@ -51,6 +51,7 @@ let ProfessionalsService = class ProfessionalsService {
             const newProf = profRepo.create({
                 name: name.trim(),
                 number,
+                email,
                 color,
                 active,
             });
@@ -98,6 +99,7 @@ let ProfessionalsService = class ProfessionalsService {
                 id: row.id,
                 name: row.name,
                 number: row.number,
+                email: row.email,
                 description: row.description,
                 active: row.active,
             });
@@ -135,6 +137,7 @@ let ProfessionalsService = class ProfessionalsService {
             id: p.id,
             name: p.name,
             number: p.number,
+            email: p.email,
             color: p.color,
             active: p.active,
             categories: categoriesByProfessional[p.id] || [],
@@ -148,7 +151,7 @@ let ProfessionalsService = class ProfessionalsService {
         return professional;
     }
     async update(id, dto) {
-        const { name, number, color, active, categories: newCategoryIds, } = dto;
+        const { name, number, email, color, active, categories: newCategoryIds, } = dto;
         if (name !== undefined && !String(name).trim()) {
             throw new common_1.BadRequestException('name no puede estar vacío');
         }
@@ -167,6 +170,8 @@ let ProfessionalsService = class ProfessionalsService {
                 partial.color = color;
             if (number !== undefined)
                 partial.number = number;
+            if (email !== undefined)
+                partial.email = email;
             if (active !== undefined)
                 partial.active = active;
             if (Object.keys(partial).length > 0) {

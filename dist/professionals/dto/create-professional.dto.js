@@ -14,6 +14,7 @@ const class_validator_1 = require("class-validator");
 class CreateProfessionalDto {
     name;
     number;
+    email;
     categories;
     color;
     active;
@@ -27,6 +28,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateProfessionalDto.prototype, "number", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProfessionalDto.prototype, "email", void 0);
 __decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ArrayUnique)(),

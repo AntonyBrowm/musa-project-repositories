@@ -23,6 +23,12 @@ let CategoriesService = class CategoriesService {
         this.categoryRepo = categoryRepo;
     }
     async create(createCategoryDto) {
+        const exists = await this.categoryRepo.findOne({
+            where: { name: createCategoryDto.name },
+        });
+        if (exists) {
+            throw new common_1.BadRequestException('Category already exists');
+        }
         const category = this.categoryRepo.create(createCategoryDto);
         return this.categoryRepo.save(category);
     }

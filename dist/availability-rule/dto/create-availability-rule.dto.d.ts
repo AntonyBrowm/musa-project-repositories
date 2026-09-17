@@ -1,6 +1,6 @@
 export declare class CreateAvailabilityRuleDto {
     professionalId: number;
-    dayOfWeek: number;
+    days: number[];
     startTime: string;
     endTime: string;
     active?: boolean;
