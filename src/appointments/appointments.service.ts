@@ -292,24 +292,26 @@ private generateSingleIcs(app: Appointment): Promise<string> {
     });
   });
 }
-  private async sendCalendarInvitation(app: Appointment): Promise<void> {
-    const icsContent = await this.generateSingleIcs(app);
+async sendCalendarInvitation(appointment: Appointment) {
+  const icsContent = await this.generateSingleIcs(appointment);
 
-    const mailOptions = {
-      from: `"Musa App" <${process.env.SMTP_USER || 'no-reply@musa.com'}>`,
-      to: app.professional.email,
-      subject: `Nueva cita reservada: ${app.clientName} - ${app.service?.name}`,
-      text: `Hola ${app.professional.name || ''},\n\nSe ha agendado una nueva cita con ${app.clientName}.\nFecha: ${app.startAt.toISOString()}\nServicio: ${app.service?.name}\nTeléfono del cliente: ${app.clientNumber}\n\nSe adjunta la invitación para agendarlo a tu calendario.`,
-      icalEvent: {
-        filename: 'cita-invitacion.ics',
-        method: 'REQUEST',
-        content: icsContent,
-      },
-    };
+  // Remitente verificado en AWS SES
+  const senderEmail = 'antonybrowm@gmail.com';
 
-    await this.transporter.sendMail(mailOptions);
-    this.logger.log(`Invitación enviada exitosamente a ${app.professional.email}`);
-  }
+  const mailOptions = {
+    from: `"Musa App" <${senderEmail.replace(/<|>/g, '')}>`, // Limpia caracteres extra si vienen del .env
+    to: appointment.professional.email,
+    subject: `Nueva Cita Agendada - ${appointment.clientName}`,
+    text: `Hola ${appointment.professional.name},\n\nSe ha agendado una nueva cita para el ${new Date(appointment.startAt).toLocaleString()}.\n\nAdjunto encontrarás la invitación para tu calendario.`,
+    icalEvent: {
+      filename: 'invitacion-cita.ics',
+      method: 'REQUEST',
+      content: icsContent,
+    },
+  };
+
+  return await this.transporter.sendMail(mailOptions);
+}
   async getIcsFeed(professionalId: number): Promise<string> {
   const appointments = await this.appointmentRepo.find({
     where: {
